@@ -1,0 +1,32 @@
+# Local development stack: Postgres+PostGIS (mirrors Supabase) and the mock
+# CarStack API server. The compute services and api run on the host via pnpm.
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: dip-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dip
+    ports:
+      - "5432:5432"
+    volumes:
+      - dip-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dip"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mock-carstack:
+    build:
+      context: .
+      dockerfile: packages/testkit/Dockerfile.mock
+    container_name: dip-mock-carstack
+    environment:
+      PORT: "8787"
+    ports:
+      - "8787:8787"
+
+volumes:
+  dip-pgdata:

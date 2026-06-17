@@ -1,0 +1,36 @@
+{
+  "name": "dealership-intelligence-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multi-rooftop dealership intelligence platform: CarStack ingestion, decision agents, and a dollar-ranked worklist.",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "dev:api": "pnpm --filter @dip/api dev",
+    "dev:web": "pnpm --filter @dip/web dev",
+    "db:up": "docker compose up -d postgres",
+    "db:migrate": "pnpm --filter @dip/db migrate",
+    "db:seed": "pnpm --filter @dip/db seed",
+    "stack:up": "docker compose up -d",
+    "stack:down": "docker compose down -v",
+    "ingest": "pnpm --filter @dip/ingestion start",
+    "agents": "pnpm --filter @dip/agents start",
+    "orchestrate": "pnpm --filter @dip/orchestrator start"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

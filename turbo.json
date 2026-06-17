@@ -1,0 +1,41 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "NODE_ENV",
+    "LOG_LEVEL",
+    "DATABASE_URL",
+    "CARSTACK_API_BASE",
+    "CARSTACK_API_KEY",
+    "VDP_RATE_PER_MIN",
+    "PAGE_SIZE_MAX",
+    "INGESTION_SNAPSHOT_DATE",
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_MODEL",
+    "AGENT_MAX_TOKENS",
+    "AGENTS_ENABLED",
+    "CALIBRATION_LEARN_RATE",
+    "WORKLIST_EXPIRY_DAYS",
+    "MIN_DOLLAR_IMPACT",
+    "PORT",
+    "SUPABASE_JWT_SECRET",
+    "CORS_ORIGIN",
+    "VITE_API_BASE_URL"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "lint": {},
+    "test": {
+      "dependsOn": ["^build"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
