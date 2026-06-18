@@ -80,6 +80,53 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.21)
 
+  packages/testkit:
+    dependencies:
+      '@dip/core':
+        specifier: workspace:*
+        version: link:../core
+      postgres:
+        specifier: ^3.4.5
+        version: 3.4.9
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.21
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.4
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
+  services/ingestion:
+    dependencies:
+      '@dip/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      '@dip/testkit':
+        specifier: workspace:*
+        version: link:../../packages/testkit
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.19.21
+      eslint:
+        specifier: ^9.17.0
+        version: 9.39.4
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.4
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.21)
+
 packages:
 
   '@anthropic-ai/sdk@0.69.0':

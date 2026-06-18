@@ -1,0 +1,11 @@
+# Railway service: ingestion (nightly cron worker, NOT a Supabase Edge Function —
+# the per-location loop + 240/min-throttled per-VIN VDP enrichment + recon
+# fan-out runs past Edge time limits).
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm turbo build --filter=@dip/ingestion..."
+
+[deploy]
+startCommand = "node services/ingestion/dist/index.js"
+cronSchedule = "0 2 * * *"
+restartPolicyType = "never"   # run-once cron; do not restart on clean exit
