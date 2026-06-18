@@ -19,6 +19,10 @@ async function main(): Promise<void> {
   const force = process.argv.includes("--force");
   const sql = createSql({ max: 1 });
   try {
+    // On Supabase, PostGIS is installed in the `extensions` schema; include it
+    // on the path so geometry types/functions resolve while the geo views are
+    // created. Harmless locally (a non-existent schema is ignored).
+    await sql.unsafe(`set search_path to public, extensions`);
     await sql.unsafe(`
       create table if not exists public._dip_migrations (
         name text primary key,

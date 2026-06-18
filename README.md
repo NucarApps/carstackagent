@@ -86,7 +86,12 @@ pnpm test        # vitest (uses local Postgres+PostGIS)
 
 ## Deployment
 
-Each compute service deploys as a **Railway cron worker** (run-once-and-exit); `api`
-is the always-on web service; `web` is a static build. Migrations apply to Supabase
-via `pnpm db:migrate`. See [`db/README.md`](./db/README.md) and each service's
-`railway.toml`.
+Data layer on **Supabase Postgres + PostGIS**; compute on **Railway**. `ingestion`,
+`agents`, and `orchestrator` are **cron workers** (run-once-and-exit); `api` is the
+always-on web service; `web` is a static build. Migrations are applied
+automatically as the **api service's pre-deploy command** (`pnpm db:migrate`) —
+there is no standalone migration service.
+
+See **[`DEPLOYMENT.md`](./DEPLOYMENT.md)** for the full Railway + Supabase runbook
+(PostGIS, the `DATABASE_URL` shared variable, per-service secrets, and seeding),
+[`db/README.md`](./db/README.md) for the schema, and each service's `railway.toml`.

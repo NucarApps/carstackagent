@@ -21,6 +21,10 @@ export function createSql(options: DbOptions = {}): Sql {
   const url = options.connectionString ?? loadDatabaseUrl();
   return postgres(url, {
     max: options.max ?? 5,
+    // Disable named prepared statements so the app works on any Supabase pooler
+    // (the transaction pooler rejects them). Queries are still parameterized;
+    // the perf cost is negligible for this cron/low-QPS workload.
+    prepare: false,
     // Quiet NOTICE noise (e.g. "schema already exists") in migrations.
     onnotice: () => {},
     types: {

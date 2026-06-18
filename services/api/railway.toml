@@ -1,10 +1,14 @@
 # Railway service: api (always-on web BFF for the worklist UI).
+# Migrations run here as a pre-deploy step (applied once before the new
+# deployment goes live; a non-zero exit fails the deploy) — there is no separate
+# @dip/db service.
 [build]
 builder = "nixpacks"
 buildCommand = "pnpm install --frozen-lockfile && pnpm turbo build --filter=@dip/api..."
 
 [deploy]
 startCommand = "node services/api/dist/index.js"
+preDeployCommand = "pnpm db:migrate"
 restartPolicyType = "on_failure"
 
 [deploy.healthcheck]
