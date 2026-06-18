@@ -32,12 +32,21 @@ export function loadCommonConfig(): CommonConfig {
   return parse(commonSchema, "common");
 }
 
-const databaseSchema = z.object({
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-});
-
 export function loadDatabaseUrl(): string {
-  return parse(databaseSchema, "database").DATABASE_URL;
+  const url = process.env.DATABASE_URL;
+  if (!url || url.trim() === "") {
+    throw new Error(
+      [
+        "DATABASE_URL is not set on this service.",
+        "Railway variables are PER-SERVICE — set DATABASE_URL on the service that",
+        "is running (Railway → service → Variables → New Variable). Use your",
+        "Supabase Session pooler URI ending in ?sslmode=require. A project shared",
+        "variable is NOT auto-applied — reference it as ${{ shared.DATABASE_URL }}.",
+        "See DEPLOYMENT.md.",
+      ].join("\n"),
+    );
+  }
+  return url;
 }
 
 const carstackSchema = z.object({
