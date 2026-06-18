@@ -1,0 +1,11 @@
+# Railway service: api (always-on web BFF for the worklist UI).
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm turbo build --filter=@dip/api..."
+
+[deploy]
+startCommand = "node services/api/dist/index.js"
+restartPolicyType = "on_failure"
+
+[deploy.healthcheck]
+path = "/healthz"

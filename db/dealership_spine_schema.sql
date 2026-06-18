@@ -232,20 +232,25 @@ select distinct on (location_id, vin)
 from raw.inventory_snapshot
 order by location_id, vin, snapshot_date desc;
 
--- Days-on-lot derived from the snapshot series (first_seen = min snapshot_date).
--- The "aged" threshold is calibratable per agent, so it is NOT baked in here.
+-- Days-on-lot derived from the snapshot series. first_seen is the earliest
+-- snapshot we observed, floored by the source's first_seen_hint so a day-1
+-- ingest still reflects real aging; the snapshot series stays authoritative as
+-- it accrues. The "aged" threshold is calibratable per agent (not baked in).
 create or replace view core.v_days_on_lot as
 with spans as (
   select location_id, vin,
-         min(snapshot_date) as first_seen,
-         max(snapshot_date) as last_seen,
-         count(*)           as snapshot_count
+         min(snapshot_date)     as first_snapshot,
+         min(first_seen_hint)   as first_hint,
+         max(snapshot_date)     as last_seen,
+         count(*)               as snapshot_count
   from raw.inventory_snapshot
   group by location_id, vin
 )
 select c.location_id, c.vin, c.make, c.model, c.model_year,
-       s.first_seen, s.last_seen, s.snapshot_count,
-       (current_date - s.first_seen) as days_on_lot
+       least(s.first_snapshot, coalesce(s.first_hint, s.first_snapshot)) as first_seen,
+       s.last_seen, s.snapshot_count,
+       (current_date - least(s.first_snapshot, coalesce(s.first_hint, s.first_snapshot)))
+         as days_on_lot
 from core.v_inventory_current c
 join spans s on s.location_id = c.location_id and s.vin = c.vin;
 
