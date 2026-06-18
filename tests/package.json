@@ -1,0 +1,23 @@
+{
+  "name": "@dip/integration",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dip/agents": "workspace:*",
+    "@dip/api": "workspace:*",
+    "@dip/core": "workspace:*",
+    "@dip/ingestion": "workspace:*",
+    "@dip/orchestrator": "workspace:*",
+    "@dip/testkit": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
