@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { CarstackClient, FixedClock, createSql, type Sql } from "@dip/core";
 import { mockFetch, resetData } from "@dip/testkit";
-import { runIngestion } from "@dip/ingestion/dist/run.js";
+import { runIngestion } from "@dip/ingestion/run";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 

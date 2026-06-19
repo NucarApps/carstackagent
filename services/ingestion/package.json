@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./run": "./dist/run.js"
+  },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",

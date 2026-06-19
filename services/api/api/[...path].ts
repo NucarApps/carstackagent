@@ -15,7 +15,7 @@ const app = buildServer({
   logger: false,
 });
 
-let ready: Promise<unknown> | undefined;
+let ready: PromiseLike<unknown> | undefined;
 
 export default async function handler(
   req: IncomingMessage,

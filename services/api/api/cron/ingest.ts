@@ -5,7 +5,7 @@
 // (see VERCEL.md). Protected by CRON_SECRET when set (Vercel Cron sends it as a
 // Bearer token).
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { runIngestion } from "@dip/ingestion/dist/run.js";
+import { runIngestion } from "@dip/ingestion/run";
 
 export default async function handler(
   req: IncomingMessage,
