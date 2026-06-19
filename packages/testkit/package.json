@@ -8,9 +8,6 @@
   "exports": {
     ".": "./dist/index.js"
   },
-  "bin": {
-    "dip-mock-carstack": "./dist/bin/mock.js"
-  },
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc -b --noEmit",
