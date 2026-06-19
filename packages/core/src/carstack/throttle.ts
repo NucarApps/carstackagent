@@ -7,13 +7,14 @@ export class TokenBucket {
     private readonly capacity: number,
     private readonly refillPerMin: number,
     private readonly sleepFn: (ms: number) => Promise<void> = defaultSleep,
+    private readonly nowFn: () => number = () => Date.now(),
   ) {
     this.tokens = capacity;
-    this.lastRefill = Date.now();
+    this.lastRefill = nowFn();
   }
 
   private refill(): void {
-    const now = Date.now();
+    const now = this.nowFn();
     const elapsedMin = (now - this.lastRefill) / 60_000;
     this.tokens = Math.min(this.capacity, this.tokens + elapsedMin * this.refillPerMin);
     this.lastRefill = now;

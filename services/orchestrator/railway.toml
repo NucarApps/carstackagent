@@ -1,0 +1,10 @@
+# Railway service: orchestrator (nightly cron) — dedupe is enforced by the
+# partial unique index; this ranks open recs and rebuilds rec.worklist.
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm turbo build --filter=@dip/orchestrator..."
+
+[deploy]
+startCommand = "node services/orchestrator/dist/index.js"
+cronSchedule = "30 4 * * *"
+restartPolicyType = "never"

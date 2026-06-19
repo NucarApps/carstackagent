@@ -1,0 +1,11 @@
+# Railway service: agents (nightly cron) — trigger SQL + Claude synthesis ->
+# rec.recommendation. The weekly learning loop is a second cron on the same
+# build (startCommand node services/agents/dist/learning.js).
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install --frozen-lockfile && pnpm turbo build --filter=@dip/agents..."
+
+[deploy]
+startCommand = "node services/agents/dist/index.js"
+cronSchedule = "30 3 * * *"
+restartPolicyType = "never"

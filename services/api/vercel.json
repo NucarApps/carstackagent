@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm turbo build --filter=@dip/api... --filter=@dip/ingestion... && pnpm --filter @dip/db migrate:deploy && pnpm --filter @dip/api build:vercel",
+  "crons": [{ "path": "/api/cron/ingest", "schedule": "0 2 * * *" }]
+}

@@ -26,6 +26,8 @@ export interface CarstackClientConfig {
   maxRetries?: number;
   fetchImpl?: FetchLike;
   sleepFn?: (ms: number) => Promise<void>;
+  /** Injectable time source for the throttle (defaults to Date.now). */
+  nowFn?: () => number;
 }
 
 const defaultFetch: FetchLike = (url, init) =>
@@ -55,12 +57,14 @@ export class CarstackClient {
     this.maxRetries = config.maxRetries ?? 4;
     this.fetchImpl = config.fetchImpl ?? defaultFetch;
     this.sleepFn = config.sleepFn ?? sleep;
+    const nowFn = config.nowFn ?? (() => Date.now());
     this.buckets = {
-      vdp: new TokenBucket(config.vdpRatePerMin, config.vdpRatePerMin, this.sleepFn),
+      vdp: new TokenBucket(config.vdpRatePerMin, config.vdpRatePerMin, this.sleepFn, nowFn),
       default: new TokenBucket(
         config.defaultRatePerMin ?? 600,
         config.defaultRatePerMin ?? 600,
         this.sleepFn,
+        nowFn,
       ),
     };
   }

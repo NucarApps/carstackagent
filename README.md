@@ -86,7 +86,18 @@ pnpm test        # vitest (uses local Postgres+PostGIS)
 
 ## Deployment
 
-Each compute service deploys as a **Railway cron worker** (run-once-and-exit); `api`
-is the always-on web service; `web` is a static build. Migrations apply to Supabase
-via `pnpm db:migrate`. See [`db/README.md`](./db/README.md) and each service's
-`railway.toml`.
+Data layer on **Supabase Postgres + PostGIS**; compute on **Railway**. `ingestion`,
+`agents`, and `orchestrator` are **cron workers** (run-once-and-exit); `api` is the
+always-on web service; `web` is a static build. Migrations are applied
+automatically as the **api service's pre-deploy command** (`pnpm db:migrate`) —
+there is no standalone migration service.
+
+Two deployment paths are documented:
+- **[`VERCEL.md`](./VERCEL.md)** — Vercel (web + API functions) + Supabase via the
+  Vercel Marketplace integration (auto-injects the DB URL) + decision agents on
+  **Eve** (`eve/`). The DB URL is read from any of `DATABASE_URL` / `POSTGRES_URL` /
+  `SUPABASE_DB_URL` (`packages/core/src/config/env.ts`), so the integration's
+  injected variable just works.
+- **[`DEPLOYMENT.md`](./DEPLOYMENT.md)** — Railway cron workers + Supabase direct.
+
+See [`db/README.md`](./db/README.md) for the schema.
