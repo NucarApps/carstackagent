@@ -16,6 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const apiRoot = join(here, ".."); // services/api
 const outRoot = join(apiRoot, ".vercel", "output");
 const fnRoot = join(outRoot, "functions");
+const staticRoot = join(outRoot, "static");
 
 // name -> compiled entry. The name is the function's route target in config.json.
 const FUNCTIONS = [
@@ -54,26 +55,44 @@ async function main() {
       target: "node22",
       sourcemap: "inline",
       logLevel: "info",
+      // Make the default export the module.exports itself, so Vercel's Node
+      // launcher gets the handler whether it reads `module.exports` or
+      // `module.exports.default`.
+      footer: { js: "if (module.exports && module.exports.default) module.exports = module.exports.default;" },
     });
     writeFileSync(join(dir, ".vc-config.json"), JSON.stringify(VC_CONFIG, null, 2));
     writeFileSync(join(dir, "package.json"), JSON.stringify({ type: "commonjs" }, null, 2));
   }
 
-  // Route the cron path to the cron function; everything else to the API. With
-  // the Build Output API, `dest` only selects the function — the function still
-  // receives the ORIGINAL request path, so Fastify's unprefixed routes match.
+  // Static build canary, served by Vercel directly (no function). If this loads
+  // at /_build.txt, the Build Output deployment is live and current; the embedded
+  // commit tells us EXACTLY which build is serving (distinguishes a stale/failed
+  // build from a function runtime crash).
+  const sha = process.env["VERCEL_GIT_COMMIT_SHA"] ?? "local";
+  mkdirSync(staticRoot, { recursive: true });
+  writeFileSync(
+    join(staticRoot, "_build.txt"),
+    `commit=${sha}\nbuilt=${new Date().toISOString()}\nbuild-output-api=true\n`,
+  );
+
+  // Routes: cron path -> cron function; serve static files (the canary) via the
+  // filesystem handler; everything else -> the API function. With the Build
+  // Output API, `dest` only selects the function — it still receives the ORIGINAL
+  // request path, so Fastify's unprefixed routes match.
   const config = {
     version: 3,
     routes: [
       { src: "/api/cron/ingest", dest: "/cron-ingest" },
+      { handle: "filesystem" },
       { src: "/(.*)", dest: "/api-main" },
     ],
   };
   mkdirSync(outRoot, { recursive: true });
   writeFileSync(join(outRoot, "config.json"), JSON.stringify(config, null, 2));
 
-  console.log(`Build Output API written to ${outRoot}`);
+  console.log(`Build Output API written to ${outRoot} (commit=${sha})`);
   for (const fn of FUNCTIONS) console.log(`  • functions/${fn.name}.func`);
+  console.log("  • static/_build.txt (canary)");
 }
 
 main().catch((err) => {
