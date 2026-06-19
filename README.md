@@ -92,6 +92,12 @@ always-on web service; `web` is a static build. Migrations are applied
 automatically as the **api service's pre-deploy command** (`pnpm db:migrate`) —
 there is no standalone migration service.
 
-See **[`DEPLOYMENT.md`](./DEPLOYMENT.md)** for the full Railway + Supabase runbook
-(PostGIS, the `DATABASE_URL` shared variable, per-service secrets, and seeding),
-[`db/README.md`](./db/README.md) for the schema, and each service's `railway.toml`.
+Two deployment paths are documented:
+- **[`VERCEL.md`](./VERCEL.md)** — Vercel (web + API functions) + Supabase via the
+  Vercel Marketplace integration (auto-injects the DB URL) + decision agents on
+  **Eve** (`eve/`). The DB URL is read from any of `DATABASE_URL` / `POSTGRES_URL` /
+  `SUPABASE_DB_URL` (`packages/core/src/config/env.ts`), so the integration's
+  injected variable just works.
+- **[`DEPLOYMENT.md`](./DEPLOYMENT.md)** — Railway cron workers + Supabase direct.
+
+See [`db/README.md`](./db/README.md) for the schema.

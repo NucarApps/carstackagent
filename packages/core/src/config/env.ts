@@ -32,20 +32,64 @@ export function loadCommonConfig(): CommonConfig {
   return parse(commonSchema, "common");
 }
 
-export function loadDatabaseUrl(): string {
-  const url = process.env.DATABASE_URL;
-  if (!url || url.trim() === "") {
-    throw new Error(
-      [
-        "DATABASE_URL is not set on this service.",
-        "Railway variables are PER-SERVICE — set DATABASE_URL on the service that",
-        "is running (Railway → service → Variables → New Variable). Use your",
-        "Supabase Session pooler URI ending in ?sslmode=require. A project shared",
-        "variable is NOT auto-applied — reference it as ${{ shared.DATABASE_URL }}.",
-        "See DEPLOYMENT.md.",
-      ].join("\n"),
-    );
+/**
+ * Database connection string. Read from whatever env var the host/provider
+ * injects, in priority order, so the app works unchanged on Railway, Vercel
+ * (the Supabase/Postgres Marketplace integrations inject POSTGRES_URL* /
+ * SUPABASE_DB_URL — not DATABASE_URL), or a plain Postgres. Returns null if none
+ * are set.
+ *
+ * Pooled vs direct: serverless/runtime callers use the pooled URL; migrations
+ * (DDL) prefer the non-pooling/direct URL — see loadMigrationDatabaseUrl.
+ */
+const DB_URL_VARS = [
+  "DATABASE_URL",
+  "POSTGRES_URL",
+  "SUPABASE_DB_URL",
+  "POSTGRES_PRISMA_URL",
+  "POSTGRES_URL_NON_POOLING",
+] as const;
+
+const MIGRATION_DB_URL_VARS = [
+  // DDL should not run through the transaction pooler; prefer a direct URL.
+  "MIGRATION_DATABASE_URL",
+  "POSTGRES_URL_NON_POOLING",
+  "DATABASE_URL",
+  "SUPABASE_DB_URL",
+  "POSTGRES_URL",
+  "POSTGRES_PRISMA_URL",
+] as const;
+
+function firstEnv(names: readonly string[]): string | null {
+  for (const name of names) {
+    const v = process.env[name];
+    if (v && v.trim() !== "") return v;
   }
+  return null;
+}
+
+function missingDbUrlError(): Error {
+  return new Error(
+    [
+      "No database connection string is set.",
+      "Set one of: " + DB_URL_VARS.join(", ") + ".",
+      "On Vercel, add the Supabase (or Postgres) Marketplace integration — it",
+      "injects POSTGRES_URL automatically into all environments. On Railway,",
+      "set DATABASE_URL on the service (variables are per-service). See VERCEL.md.",
+    ].join("\n"),
+  );
+}
+
+export function loadDatabaseUrl(): string {
+  const url = firstEnv(DB_URL_VARS);
+  if (!url) throw missingDbUrlError();
+  return url;
+}
+
+/** Connection string for migrations — prefers a direct (non-pooled) URL. */
+export function loadMigrationDatabaseUrl(): string {
+  const url = firstEnv(MIGRATION_DB_URL_VARS);
+  if (!url) throw missingDbUrlError();
   return url;
 }
 

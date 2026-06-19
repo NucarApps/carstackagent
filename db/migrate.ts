@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { createSql } from "@dip/core";
+import { createSql, loadMigrationDatabaseUrl } from "@dip/core";
 
 /**
  * Ordered migration runner. Applies the spine schema then the agents/learning
@@ -17,7 +17,8 @@ const MIGRATIONS = [
 
 async function main(): Promise<void> {
   const force = process.argv.includes("--force");
-  const sql = createSql({ max: 1 });
+  // DDL prefers a direct (non-pooled) connection.
+  const sql = createSql({ max: 1, connectionString: loadMigrationDatabaseUrl() });
   try {
     // On Supabase, PostGIS is installed in the `extensions` schema; include it
     // on the path so geometry types/functions resolve while the geo views are
