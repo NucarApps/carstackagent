@@ -29,8 +29,9 @@ Target topology:
 Create a Vercel project with **Root Directory = `services/api`**. Settings come
 from `services/api/vercel.json`:
 - **Install:** `cd ../.. && pnpm install --frozen-lockfile`
-- **Build:** `cd ../.. && pnpm db:migrate && pnpm turbo build --filter=@dip/api... --filter=@dip/ingestion...`
-  — migrations run on every deploy (idempotent, tracked in `public._dip_migrations`,
+- **Build:** `cd ../.. && pnpm turbo build --filter=@dip/api... --filter=@dip/ingestion... && pnpm db:migrate`
+  — build first (so `@dip/core` is compiled before `migrate.ts` imports it), then
+  migrations run on every deploy (idempotent, tracked in `public._dip_migrations`,
   using the non-pooling URL via `loadMigrationDatabaseUrl()`).
 - **Functions:** `api/**` with `maxDuration: 300`.
 - **Rewrite:** all paths → `/api/$1` (the catch-all Fastify function).
