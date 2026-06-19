@@ -29,10 +29,14 @@ Target topology:
 Create a Vercel project with **Root Directory = `services/api`**. Settings come
 from `services/api/vercel.json`:
 - **Install:** `cd ../.. && pnpm install --frozen-lockfile`
-- **Build:** `cd ../.. && pnpm turbo build --filter=@dip/api... --filter=@dip/ingestion... && pnpm db:migrate`
+- **Build:** `cd ../.. && pnpm turbo build --filter=@dip/api... --filter=@dip/ingestion... && pnpm --filter @dip/db migrate:deploy`
   — build first (so `@dip/core` is compiled before `migrate.ts` imports it), then
   migrations run on every deploy (idempotent, tracked in `public._dip_migrations`,
-  using the non-pooling URL via `loadMigrationDatabaseUrl()`).
+  using the non-pooling URL). `migrate:deploy` passes `--skip-if-no-db`, so a
+  deploy **before** the Supabase integration is added still succeeds (it logs a
+  warning and skips); migrations run automatically on the next deploy once the DB
+  URL is injected. **You must add the Supabase integration (step 1) for the API to
+  actually work** — skipping only keeps the build from hard-failing.
 - **Functions:** `api/**` with `maxDuration: 300`.
 - **Rewrite:** all paths → `/api/$1` (the catch-all Fastify function).
 - **Cron:** `/api/cron/ingest` nightly.

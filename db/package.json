@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "migrate": "tsx migrate.ts",
+    "migrate:deploy": "tsx migrate.ts --skip-if-no-db",
     "seed": "tsx seed.ts"
   },
   "dependencies": {

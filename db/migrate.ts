@@ -17,8 +17,27 @@ const MIGRATIONS = [
 
 async function main(): Promise<void> {
   const force = process.argv.includes("--force");
-  // DDL prefers a direct (non-pooled) connection.
-  const sql = createSql({ max: 1, connectionString: loadMigrationDatabaseUrl() });
+  // --skip-if-no-db lets a CI/Vercel build succeed when no DB URL is configured
+  // yet (e.g. before the Supabase integration is added); migrations then run on
+  // the next deploy once the URL is injected.
+  const skipIfNoDb = process.argv.includes("--skip-if-no-db");
+
+  let connectionString: string;
+  try {
+    connectionString = loadMigrationDatabaseUrl(); // DDL prefers a direct (non-pooled) URL
+  } catch (err) {
+    if (skipIfNoDb) {
+      console.warn(
+        "⚠ Skipping migrations — no database URL is configured.\n" +
+          (err instanceof Error ? err.message : String(err)) +
+          "\nThe build will continue; migrations will run on the next deploy once a DB URL is set.",
+      );
+      return;
+    }
+    throw err;
+  }
+
+  const sql = createSql({ max: 1, connectionString });
   try {
     // On Supabase, PostGIS is installed in the `extensions` schema; include it
     // on the path so geometry types/functions resolve while the geo views are
