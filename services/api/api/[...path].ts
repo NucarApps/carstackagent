@@ -1,21 +1,25 @@
 // Vercel serverless entry for the api. Vercel compiles this file directly (it is
 // intentionally outside src/ so the @dip/api tsc build and lint ignore it). It
 // wraps the existing Fastify app — every route/handler in src/ is reused
-// unchanged — and forwards Node's (req,res) into it. DB env vars are provided by
-// the Vercel↔Supabase integration (POSTGRES_URL etc.; see loadDatabaseUrl).
+// unchanged. DB env vars come from the Vercel↔Supabase integration (POSTGRES_URL
+// etc.; see loadDatabaseUrl).
 //
-// Initialization is lazy and fully guarded: config parsing, the DB client, and
-// the workspace imports all happen on first request inside a try/catch, so a
-// missing env var (e.g. SUPABASE_JWT_SECRET) or a bundling issue surfaces as a
-// readable JSON 500 instead of an opaque FUNCTION_INVOCATION_FAILED crash.
+// Dispatch uses Fastify's in-memory app.inject() rather than
+// app.server.emit("request", ...). The emit-the-raw-http-server pattern is
+// fragile under Vercel: when Fastify writes to Vercel's response object it can
+// emit an unhandled "error" event that crashes the process uncaught
+// (FUNCTION_INVOCATION_FAILED) outside any try/catch. inject() runs the full
+// route stack in memory and returns a plain result we write to res exactly once,
+// so EVERYTHING — init, body read, dispatch — is inside one guard and any
+// failure comes back as a readable JSON 500 instead of an opaque crash.
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, InjectOptions } from "fastify";
 
 let appPromise: Promise<FastifyInstance> | undefined;
 
 async function init(): Promise<FastifyInstance> {
   // Dynamic imports: if a workspace package fails to resolve/bundle at runtime,
-  // the error is caught below and reported instead of crashing module load.
+  // the rejection is caught below and reported instead of crashing module load.
   const { getSql, loadApiConfig } = await import("@dip/core");
   const { buildServer } = await import("../dist/server.js");
 
@@ -30,34 +34,54 @@ async function init(): Promise<FastifyInstance> {
   return app;
 }
 
+async function readBody(req: IncomingMessage): Promise<Buffer | undefined> {
+  if (req.method === "GET" || req.method === "HEAD") return undefined;
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) chunks.push(chunk as Buffer);
+  return chunks.length > 0 ? Buffer.concat(chunks) : undefined;
+}
+
 export default async function handler(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
-  let app: FastifyInstance;
   try {
     if (!appPromise) appPromise = init();
-    app = await appPromise;
+    const app = await appPromise;
+
+    // The rewrite in vercel.json sends root-level paths (/worklist) here prefixed
+    // as /api/worklist. Fastify routes are registered without that prefix, so
+    // strip a single leading /api segment before dispatching.
+    let url = req.url ?? "/";
+    if (url === "/api") url = "/";
+    else if (url.startsWith("/api/")) url = url.slice(4);
+
+    const payload = await readBody(req);
+    const injectOptions: InjectOptions = {
+      method: (req.method ?? "GET") as InjectOptions["method"],
+      url,
+      headers: req.headers as InjectOptions["headers"],
+      ...(payload ? { payload } : {}),
+    };
+    const response = await app.inject(injectOptions);
+
+    res.statusCode = response.statusCode;
+    for (const [key, value] of Object.entries(response.headers)) {
+      if (value !== undefined) res.setHeader(key, value as string | string[] | number);
+    }
+    res.end(response.rawPayload);
   } catch (err) {
     appPromise = undefined; // let the next request retry once the env is fixed
-    console.error("api function initialization failed:", err);
-    res.statusCode = 500;
-    res.setHeader("content-type", "application/json");
-    res.end(
-      JSON.stringify({
-        error: "initialization_failed",
-        message: err instanceof Error ? err.message : String(err),
-      }),
-    );
-    return;
+    console.error("api function error:", err);
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.setHeader("content-type", "application/json");
+      res.end(
+        JSON.stringify({
+          error: "function_error",
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    }
   }
-
-  // The rewrite in vercel.json sends root-level paths (/worklist) here prefixed
-  // as /api/worklist. Fastify routes are registered without that prefix, so
-  // strip a single leading /api segment before dispatching.
-  const url = req.url ?? "/";
-  if (url === "/api") req.url = "/";
-  else if (url.startsWith("/api/")) req.url = url.slice(4);
-
-  app.server.emit("request", req, res);
 }
