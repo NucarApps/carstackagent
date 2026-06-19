@@ -1,10 +1,11 @@
-// Vercel Cron entry for ingestion. Compiled by Vercel (outside src/). Ingest one
-// rooftop per invocation (?location=<id>) to stay under the function duration
-// cap; with no param it ingests all active locations sequentially. For many
-// rooftops or long throttle windows, move ingestion to an Eve durable workflow
-// (see VERCEL.md). Protected by CRON_SECRET when set (Vercel Cron sends it as a
-// Bearer token).
+// Serverless cron entry for ingestion. Bundled by scripts/build-vercel.mjs into a
+// self-contained CommonJS Vercel function. Ingest one rooftop per invocation
+// (?location=<id>) to stay under the function duration cap; with no param it
+// ingests all active locations sequentially. For many rooftops or long throttle
+// windows, move ingestion to an Eve durable workflow (see VERCEL.md). Protected
+// by CRON_SECRET when set (Vercel Cron sends it as a Bearer token).
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { runIngestion } from "@dip/ingestion/run";
 
 export default async function handler(
   req: IncomingMessage,
@@ -21,9 +22,6 @@ export default async function handler(
   const location = url.searchParams.get("location") ?? undefined;
 
   try {
-    // Dynamic import so a bundling/resolution failure surfaces as a readable
-    // JSON 500 rather than crashing module load (FUNCTION_INVOCATION_FAILED).
-    const { runIngestion } = await import("@dip/ingestion/run");
     const result = await runIngestion(location ? { locationIds: [location] } : {});
     res.setHeader("content-type", "application/json");
     res.end(JSON.stringify(result));

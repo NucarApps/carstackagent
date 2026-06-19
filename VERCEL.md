@@ -29,24 +29,38 @@ Target topology:
 Create a Vercel project with **Root Directory = `services/api`**. Settings come
 from `services/api/vercel.json`:
 - **Install:** `cd ../.. && pnpm install --frozen-lockfile`
-- **Build:** `cd ../.. && pnpm turbo build --filter=@dip/api... --filter=@dip/ingestion... && pnpm --filter @dip/db migrate:deploy`
-  — build first (so `@dip/core` is compiled before `migrate.ts` imports it), then
-  migrations run on every deploy (idempotent, tracked in `public._dip_migrations`,
-  using the non-pooling URL). `migrate:deploy` passes `--skip-if-no-db`, so a
-  deploy **before** the Supabase integration is added still succeeds (it logs a
-  warning and skips); migrations run automatically on the next deploy once the DB
-  URL is injected. **You must add the Supabase integration (step 1) for the API to
+- **Build:** `cd ../.. && pnpm turbo build --filter=@dip/api... --filter=@dip/ingestion... && pnpm --filter @dip/db migrate:deploy && pnpm --filter @dip/api build:vercel`
+  — build the workspace first (so `@dip/core` is compiled before `migrate.ts`
+  imports it), run migrations (idempotent, tracked in `public._dip_migrations`,
+  non-pooling URL; `migrate:deploy` passes `--skip-if-no-db` so a deploy before
+  the Supabase integration is added still succeeds and skips), then **bundle the
+  functions**. **You must add the Supabase integration (step 1) for the API to
   actually work** — skipping only keeps the build from hard-failing.
-- **Functions:** `api/**` with `maxDuration: 300`.
-- **Rewrite:** all paths → `/api/$1` (the catch-all Fastify function).
-- **Cron:** `/api/cron/ingest` nightly.
+- **Cron:** `/api/cron/ingest` nightly (declared in `vercel.json`).
 
-`api/[...path].ts` wraps `buildServer()` (from `src/server.ts`) — every existing
-route works unchanged: `GET /healthz`, `/readyz`, `/worklist`,
-`/recommendations/:id`, `POST /recommendations/:id/feedback`, `/meta/*`.
+### Why a pre-bundled Build Output, not raw `api/*.ts`
+Letting `@vercel/node` compile raw `api/*.ts` in this pnpm/ESM monorepo
+(Root Directory = `services/api`, workspace packages symlinked from *outside* it)
+made **every** function — even a zero-dependency one — return
+`FUNCTION_INVOCATION_FAILED` at the function-load layer. Instead,
+`scripts/build-vercel.mjs` (the `build:vercel` script) **esbuild-bundles** each
+function into one self-contained **CommonJS** file with all workspace + npm deps
+inlined, and emits the **[Build Output API](https://vercel.com/docs/build-output-api)**
+directory `services/api/.vercel/output/`:
+- `functions/api-main.func/` — the whole Fastify app (`buildServer()` reused via
+  `src/serverless/api.ts`), dispatched in-memory via `app.inject()`.
+- `functions/cron-ingest.func/` — ingestion (`src/serverless/cron-ingest.ts`).
+- each `.func` carries `.vc-config.json` (`runtime: nodejs22.x`,
+  `maxDuration: 300`) and a `{"type":"commonjs"}` marker so it loads
+  unambiguously under the repo's ESM root.
+- `config.json` routes `/api/cron/ingest` → the cron function and `/(.*)` → the
+  API function. Build Output `dest` only *selects* the function — it still
+  receives the original request path, so Fastify's routes match unprefixed:
+  `GET /healthz`, `/readyz`, `/worklist`, `/recommendations/:id`,
+  `POST /recommendations/:id/feedback`, `/meta/*`.
 
-> Monorepo note: if Vercel's file tracing misses workspace files, set
-> `outputFileTracingRoot` to the repo root (or move to a single Vercel project).
+This sidesteps `@vercel/node` source compilation **and** NFT file-tracing of pnpm
+symlinks in one move — no `outputFileTracingRoot`/`includeFiles` needed.
 
 ## 3. Web project (`web/`)
 Vercel project with **Root Directory = `web`**, settings from `web/vercel.json`
@@ -54,7 +68,7 @@ Vercel project with **Root Directory = `web`**, settings from `web/vercel.json`
 `VITE_API_BASE_URL` to the API project's URL.
 
 ## 4. Ingestion
-`api/cron/ingest.ts` reuses `runIngestion`. Hit `/api/cron/ingest?location=<id>`
+`src/serverless/cron-ingest.ts` reuses `runIngestion`. Hit `/api/cron/ingest?location=<id>`
 to ingest one rooftop (stays under the function cap); the nightly cron with no
 param ingests all active locations sequentially. For many rooftops or long
 240/min VDP throttle windows, run ingestion as an **Eve durable workflow**
